@@ -1,7 +1,9 @@
 import streamlit as st
 import joblib
+import numpy as np
 
 model = joblib.load("model.pkl")
+scaler = joblib.load("scaler.pkl")
 
 st.title("Student Performance Predictor")
 
@@ -13,12 +15,16 @@ sleep_hours = st.slider("Sleep Hours", 0, 10)
 
 if st.button("Predict"):
 
-    prediction = model.predict([[
+    features = np.array([[
         study_hours,
         attendance,
         previous_marks,
         assignments,
         sleep_hours
     ]])
+
+    features_scaled = scaler.transform(features)
+
+    prediction = model.predict(features_scaled)
 
     st.success(f"Predicted Marks: {prediction[0]:.2f}")
