@@ -8,13 +8,42 @@ from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import r2_score
 
-# Load dataset
-df = pd.read_csv("dataset.csv")
 
-print("Descriptive Statistics:\n")
+# STEP 1: Load dataset
+df = pd.read_csv("dataset2.csv")
+
+print("\nDataset Preview:\n")
+print(df.head())
+
+# Show dataset shape
+print("\nDataset Shape (Rows, Columns):", df.shape)
+
+
+# STEP 2: Handle missing values
+df = df.fillna(df.mean())
+
+print("\nMissing values handled successfully!")
+
+
+# STEP 3: Recalculate final_marks (for synthetic dataset consistency)
+df["final_marks"] = (
+    df["study_hours"] * 5
+    + df["attendance"] * 0.3
+    + df["previous_marks"] * 0.4
+    + df["assignments"] * 2
+    + df["sleep_hours"] * 1
+)
+
+# Limit marks between 0–100 (realistic exam range)
+df["final_marks"] = df["final_marks"].clip(0, 100)
+
+
+# STEP 4: Descriptive statistics
+print("\nDescriptive Statistics:\n")
 print(df.describe())
 
-# Remove outliers using IQR
+
+# STEP 5: Handle outliers using IQR method
 Q1 = df.quantile(0.25)
 Q3 = df.quantile(0.75)
 
@@ -25,57 +54,79 @@ df = df[~((df < (Q1 - 1.5 * IQR)) |
 
 print("\nOutliers removed successfully!")
 
-# Split dataset
+# Show dataset shape after removing outliers
+print("\nDataset Shape After Outlier Removal:", df.shape)
+
+
+# STEP 6: Split features and target
 X = df.drop("final_marks", axis=1)
 y = df["final_marks"]
 
-# Normalize data
+
+# STEP 7: Data normalization
 scaler = MinMaxScaler()
-X = scaler.fit_transform(X)
+X_scaled = scaler.fit_transform(X)
 
-print("\nNormalization completed!")
+# Convert normalized data into dataframe for display
+X_scaled_df = pd.DataFrame(X_scaled, columns=X.columns)
 
-# Train-test split
+print("\nDataset After Normalization:\n")
+print(X_scaled_df.head())
+
+# Show normalized dataset shape
+print("\nNormalized Dataset Shape:", X_scaled_df.shape)
+
+# Save scaler
+joblib.dump(scaler, "scaler.pkl")
+
+print("\nData normalization completed!")
+
+
+# STEP 8: Train-test split
 X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42
+    X_scaled, y, test_size=0.2, random_state=42
 )
 
-# Train 3 models
+
+# STEP 9: Train 3 algorithms
 lr = LinearRegression()
 dt = DecisionTreeRegressor()
-rf = RandomForestRegressor()
+rf = RandomForestRegressor(random_state=42)
 
 lr.fit(X_train, y_train)
 dt.fit(X_train, y_train)
 rf.fit(X_train, y_train)
 
-# Predictions
+
+# STEP 10: Model comparison
 lr_pred = lr.predict(X_test)
 dt_pred = dt.predict(X_test)
 rf_pred = rf.predict(X_test)
 
-# Model comparison
-print("\nModel Comparison Scores:")
+print("\nModel Comparison (R² Score):")
 
-print("Linear Regression:", r2_score(y_test, lr_pred))
-print("Decision Tree:", r2_score(y_test, dt_pred))
-print("Random Forest:", r2_score(y_test, rf_pred))
+print("Linear Regression Score:", r2_score(y_test, lr_pred))
+print("Decision Tree Score:", r2_score(y_test, dt_pred))
+print("Random Forest Score:", r2_score(y_test, rf_pred))
 
-# Hyperparameter tuning for Random Forest
+
+# STEP 11: Hyperparameter tuning (Random Forest)
 params = {
     "n_estimators": [50, 100],
     "max_depth": [5, 10]
 }
 
-grid = GridSearchCV(RandomForestRegressor(), params)
+grid = GridSearchCV(RandomForestRegressor(random_state=42), params)
 
 grid.fit(X_train, y_train)
 
 best_model = grid.best_estimator_
 
-print("\nBest Parameters:", grid.best_params_)
+print("\nBest Parameters after tuning:", grid.best_params_)
 
-# Save best model
+
+# STEP 12: Save final optimized model
 joblib.dump(best_model, "model.pkl")
 
 print("\nFinal optimized model saved as model.pkl")
+print("Scaler saved as scaler.pkl")
